@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Builder</title>
+    <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Resume Builder</h2>
+            </div>
+            <div class="variant-selector">
+                <h3>Resume Variants</h3>
+                <div class="variant-list" id="variant-list">
+                    <!-- Variants will be populated here -->
+                </div>
+                <button class="btn btn-primary" id="new-variant-btn">+ New Variant</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Action Bar -->
+            <div class="action-bar">
+                <button class="btn btn-primary" id="save-btn">Save</button>
+                <button class="btn btn-secondary" id="export-tex-btn">Export LaTeX</button>
+                <button class="btn btn-secondary" id="compile-pdf-btn">Compile PDF</button>
+                <button class="btn btn-secondary" id="import-tex-btn">Import LaTeX</button>
+            </div>
+
+            <!-- Editor and Preview Container -->
+            <div class="editor-preview-container">
+                <!-- Editor Panel -->
+                <div class="editor-panel" id="editor-panel">
+                    <div class="form-container">
+                        <!-- Personal Information -->
+                        <section class="form-section" data-section="personal">
+                            <h3 class="section-header">
+                                <span>Personal Information</span>
+                                <button class="toggle-btn">−</button>
+                            </h3>
+                            <div class="section-content">
+                                <div class="form-group">
+                                    <label for="name">Full Name</label>
+                                    <input type="text" id="name" placeholder="John Doe">
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">Email</label>
+                                    <input type="email" id="email" placeholder="john.doe@example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="linkedin">LinkedIn URL</label>
+                                    <input type="url" id="linkedin" placeholder="https://linkedin.com/in/...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="github">GitHub URL</label>
+                                    <input type="url" id="github" placeholder="https://github.com/...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="portfolio">Portfolio URL</label>
+                                    <input type="url" id="portfolio" placeholder="https://...">
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Education -->
+                        <section class="form-section" data-section="education">
+                            <h3 class="section-header">
+                                <span>Education</span>
+                                <button class="toggle-btn">−</button>
+                            </h3>
+                            <div class="section-content">
+                                <div id="education-entries">
+                                    <!-- Education entries will be added here -->
+                                </div>
+                                <button class="btn btn-small" id="add-education-btn">+ Add Education</button>
+                            </div>
+                        </section>
+
+                        <!-- Skills -->
+                        <section class="form-section" data-section="skills">
+                            <h3 class="section-header">
+                                <span>Skills and Certifications</span>
+                                <button class="toggle-btn">−</button>
+                            </h3>
+                            <div class="section-content">
+                                <div class="form-group">
+                                    <label for="programming-languages">Programming Languages</label>
+                                    <textarea id="programming-languages" rows="2" placeholder="Python, C/C++, JavaScript..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="ml-skills">Machine Learning and Data Science</label>
+                                    <textarea id="ml-skills" rows="2" placeholder="MLOps, Computer Vision, NLP..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="cloud-tech">Cloud Technologies</label>
+                                    <textarea id="cloud-tech" rows="2" placeholder="AWS, Azure, Docker..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="frameworks">Frameworks and Tools</label>
+                                    <textarea id="frameworks" rows="2" placeholder="REST API, TensorFlow, PyTorch..."></textarea>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Work Experience -->
+                        <section class="form-section" data-section="experience">
+                            <h3 class="section-header">
+                                <span>Work Experience</span>
+                                <button class="toggle-btn">−</button>
+                            </h3>
+                            <div class="section-content">
+                                <div id="experience-entries">
+                                    <!-- Experience entries will be added here -->
+                                </div>
+                                <button class="btn btn-small" id="add-experience-btn">+ Add Experience</button>
+                            </div>
+                        </section>
+
+                        <!-- Projects -->
+                        <section class="form-section" data-section="projects">
+                            <h3 class="section-header">
+                                <span>Projects</span>
+                                <button class="toggle-btn">−</button>
+                            </h3>
+                            <div class="section-content">
+                                <div id="project-entries">
+                                    <!-- Project entries will be added here -->
+                                </div>
+                                <button class="btn btn-small" id="add-project-btn">+ Add Project</button>
+                            </div>
+                        </section>
+
+                        <!-- Achievements -->
+                        <section class="form-section" data-section="achievements">
+                            <h3 class="section-header">
+                                <span>Achievements and Publications</span>
+                                <button class="toggle-btn">−</button>
+                            </h3>
+                            <div class="section-content">
+                                <div id="achievement-entries">
+                                    <!-- Achievement entries will be added here -->
+                                </div>
+                                <button class="btn btn-small" id="add-achievement-btn">+ Add Achievement</button>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Preview Panel -->
+                <div class="preview-panel" id="preview-panel">
+                    <div class="preview-header">
+                        <h3>Live Preview</h3>
+                        <button class="btn btn-small" id="toggle-preview-btn">Hide Preview</button>
+                    </div>
+                    <div class="preview-content" id="preview-content">
+                        <!-- Preview will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for new variant -->
+    <div id="variant-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Create New Resume Variant</h3>
+            <div class="form-group">
+                <label for="variant-name">Variant Name</label>
+                <input type="text" id="variant-name" placeholder="e.g., ml.tex, compiler.tex">
+            </div>
+            <button class="btn btn-primary" id="create-variant-btn">Create</button>
+        </div>
+    </div>
+
+    <script src="src/fileManager.js"></script>
+    <script src="src/template.js"></script>
+    <script src="src/preview.js"></script>
+    <script src="src/editor.js"></script>
+    <script src="src/main.js"></script>
+</body>
+</html>
+
