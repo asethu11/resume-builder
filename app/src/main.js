@@ -13,12 +13,15 @@ class ResumeBuilderApp {
         this.fileManager = new FileManager();
         this.templateEngine = new TemplateEngine();
         this.previewRenderer = new PreviewRenderer('preview-content');
+        this.parser = new ResumeParser();
         this.editor = new Editor(this.fileManager, this.previewRenderer, this.templateEngine);
 
         // Setup UI components
+        this.setupFileUpload();
         this.setupVariantSelector();
         this.setupNewVariantModal();
         this.setupPreviewToggle();
+        this.setupResizeHandle();
         
         // Initial render
         this.updateVariantList();
@@ -168,19 +171,226 @@ class ResumeBuilderApp {
     setupPreviewToggle() {
         const toggleBtn = document.getElementById('toggle-preview-btn');
         const previewPanel = document.getElementById('preview-panel');
+        const resizeHandle = document.getElementById('resize-handle');
 
         if (toggleBtn && previewPanel) {
             toggleBtn.addEventListener('click', () => {
                 const isHidden = previewPanel.classList.contains('hidden');
                 if (isHidden) {
                     previewPanel.classList.remove('hidden');
+                    if (resizeHandle) resizeHandle.style.display = 'block';
                     toggleBtn.textContent = 'Hide Preview';
                 } else {
                     previewPanel.classList.add('hidden');
+                    if (resizeHandle) resizeHandle.style.display = 'none';
                     toggleBtn.textContent = 'Show Preview';
                 }
             });
         }
+    }
+
+    // Setup file upload
+    setupFileUpload() {
+        const uploadInput = document.getElementById('resume-upload');
+        const uploadArea = document.getElementById('upload-area');
+        const uploadStatus = document.getElementById('upload-status');
+
+        // File input change handler
+        if (uploadInput) {
+            uploadInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    this.handleFileUpload(file);
+                }
+            });
+        }
+
+        // Drag and drop handlers
+        if (uploadArea) {
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.add('drag-over');
+            });
+
+            uploadArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.remove('drag-over');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.remove('drag-over');
+                
+                const file = e.dataTransfer.files[0];
+                if (file && (file.name.endsWith('.docx') || file.name.endsWith('.pdf'))) {
+                    this.handleFileUpload(file);
+                } else {
+                    this.showUploadStatus('Please upload a DOCX or PDF file', 'error');
+                }
+            });
+
+            // Click to upload
+            uploadArea.addEventListener('click', () => {
+                if (uploadInput) {
+                    uploadInput.click();
+                }
+            });
+        }
+    }
+
+    // Handle file upload and parsing
+    async handleFileUpload(file) {
+        const uploadStatus = document.getElementById('upload-status');
+        
+        if (!file) return;
+
+        // Validate file type
+        if (!file.name.endsWith('.docx') && !file.name.endsWith('.pdf')) {
+            this.showUploadStatus('Please upload a DOCX or PDF file', 'error');
+            return;
+        }
+
+        this.showUploadStatus('Parsing file...', 'loading');
+
+        try {
+            let parsedText;
+            
+            // Parse based on file type
+            if (file.name.endsWith('.docx')) {
+                parsedText = await this.parser.parseDOCX(file);
+            } else if (file.name.endsWith('.pdf')) {
+                parsedText = await this.parser.parsePDF(file);
+            }
+
+            // Extract structured data
+            const resumeData = this.parser.extractResumeData(parsedText);
+
+            // Create or update variant
+            const variantName = file.name.replace(/\.(docx|pdf)$/i, '.tex');
+            if (!this.fileManager.variants.has(variantName)) {
+                this.fileManager.createVariant(variantName);
+            }
+            
+            // Update variant data
+            this.fileManager.updateVariantData(resumeData);
+
+            // Save all bullets to library
+            this.fileManager.saveBulletsFromResume(resumeData);
+
+            // Load into editor
+            this.editor.loadCurrentVariant();
+
+            // Update variant list
+            this.updateVariantList();
+
+            this.showUploadStatus('✓ Resume parsed successfully!', 'success');
+            
+            // Scroll to top to show the loaded resume
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        } catch (error) {
+            console.error('Error parsing file:', error);
+            this.showUploadStatus('Error parsing file: ' + error.message, 'error');
+        }
+    }
+
+    // Show upload status message
+    showUploadStatus(message, type = 'info') {
+        const uploadStatus = document.getElementById('upload-status');
+        if (uploadStatus) {
+            uploadStatus.textContent = message;
+            // Fix class name to match CSS
+            if (type === 'loading') {
+                uploadStatus.className = 'upload-status upload-status-loading';
+            } else if (type === 'success') {
+                uploadStatus.className = 'upload-status upload-status-success';
+            } else if (type === 'error') {
+                uploadStatus.className = 'upload-status upload-status-error';
+            } else {
+                uploadStatus.className = 'upload-status';
+            }
+            
+            // Clear success/error messages after 5 seconds
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    uploadStatus.textContent = '';
+                    uploadStatus.className = 'upload-status';
+                }, 5000);
+            }
+        }
+    }
+
+    // Setup resize handle for panels
+    setupResizeHandle() {
+        const resizeHandle = document.getElementById('resize-handle');
+        const editorPanel = document.getElementById('editor-panel');
+        const previewPanel = document.getElementById('preview-panel');
+        const container = document.querySelector('.editor-preview-container');
+
+        if (!resizeHandle || !editorPanel || !previewPanel) return;
+
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = previewPanel.offsetWidth;
+            resizeHandle.classList.add('active');
+            
+            // Prevent text selection while dragging
+            document.body.style.userSelect = 'none';
+            document.body.style.cursor = 'col-resize';
+
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+
+            const containerWidth = container.offsetWidth;
+            const deltaX = startX - e.clientX; // Inverted because we're resizing from right
+            const newWidth = startWidth + deltaX;
+            
+            // Constrain width between min and max
+            const minWidth = 300;
+            const maxWidth = containerWidth * 0.7;
+            
+            if (newWidth >= minWidth && newWidth <= maxWidth) {
+                previewPanel.style.width = `${newWidth}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                resizeHandle.classList.remove('active');
+                document.body.style.userSelect = '';
+                document.body.style.cursor = '';
+                
+                // Save width to localStorage
+                localStorage.setItem('preview-panel-width', previewPanel.offsetWidth);
+            }
+        });
+
+        // Load saved width from localStorage
+        const savedWidth = localStorage.getItem('preview-panel-width');
+        if (savedWidth) {
+            const width = parseInt(savedWidth);
+            if (width >= 300 && width <= window.innerWidth * 0.7) {
+                previewPanel.style.width = `${width}px`;
+            }
+        }
+
+        // Double-click to reset to default
+        resizeHandle.addEventListener('dblclick', () => {
+            previewPanel.style.width = '500px';
+            localStorage.setItem('preview-panel-width', '500');
+        });
     }
 
     // Escape HTML helper

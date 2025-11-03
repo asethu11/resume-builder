@@ -20,9 +20,169 @@ class Editor {
         this.bindActionButtons();
         this.bindEntryButtons();
         this.bindSectionToggles();
+        this.initializeDragAndDrop();
         
         // Load current variant data
         this.loadCurrentVariant();
+    }
+
+    // Initialize drag-and-drop for bullet lists
+    initializeDragAndDrop() {
+        // Wait for DOM to be ready, then initialize sortable on bullet containers
+        setTimeout(() => {
+            this.makeAllBulletsSortable();
+        }, 100);
+    }
+
+    // Make all bullet lists sortable
+    makeAllBulletsSortable() {
+        document.querySelectorAll('.bullet-points').forEach(container => {
+            if (!container.hasAttribute('data-sortable-initialized')) {
+                this.makeSortable(container);
+                container.setAttribute('data-sortable-initialized', 'true');
+            }
+        });
+    }
+
+    // Make a container sortable using SortableJS
+    makeSortable(container) {
+        if (typeof Sortable === 'undefined') {
+            // Fallback to native HTML5 drag-and-drop if SortableJS not available
+            this.makeNativeSortable(container);
+            return;
+        }
+
+        new Sortable(container, {
+            animation: 150,
+            handle: '.bullet-point-item',
+            ghostClass: 'dragging',
+            dragClass: 'dragging',
+            onEnd: (evt) => {
+                this.handleBulletReorder(evt.oldIndex, evt.newIndex, container);
+            }
+        });
+    }
+
+    // Native HTML5 drag-and-drop implementation (fallback)
+    makeNativeSortable(container) {
+        const items = container.querySelectorAll('.bullet-point-item');
+        
+        items.forEach((item, index) => {
+            item.draggable = true;
+            item.dataset.index = index;
+
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', item.outerHTML);
+                item.classList.add('dragging');
+            });
+
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+            });
+
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                const afterElement = this.getDragAfterElement(container, e.clientY);
+                const dragging = container.querySelector('.dragging');
+                
+                if (afterElement == null) {
+                    container.appendChild(dragging);
+                } else {
+                    container.insertBefore(dragging, afterElement);
+                }
+            });
+
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const draggedItem = container.querySelector('.dragging');
+                if (draggedItem) {
+                    this.handleBulletReorderNative(container);
+                }
+            });
+        });
+    }
+
+    // Get element after which to insert dragged item
+    getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.bullet-point-item:not(.dragging)')];
+        
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // Handle bullet reorder using SortableJS
+    handleBulletReorder(oldIndex, newIndex, container) {
+        if (oldIndex === newIndex) return;
+        
+        // Update data and preview
+        this.updateData();
+        this.updatePreview();
+        
+        // Save bullets to library
+        this.saveCurrentBulletsToLibrary();
+    }
+
+    // Handle bullet reorder using native drag-and-drop
+    handleBulletReorderNative(container) {
+        this.updateData();
+        this.updatePreview();
+        this.saveCurrentBulletsToLibrary();
+    }
+
+    // Save current bullets to library
+    saveCurrentBulletsToLibrary() {
+        const data = this.updateData();
+        
+        // Save experience bullets
+        if (data.experience) {
+            data.experience.forEach((exp, expIdx) => {
+                if (exp.bullets) {
+                    exp.bullets.forEach((bulletText) => {
+                        const bulletId = this.fileManager.generateBulletId({
+                            text: bulletText,
+                            section: 'experience',
+                            entryId: expIdx
+                        });
+                        this.fileManager.saveBullet(bulletId, {
+                            text: bulletText,
+                            section: 'experience',
+                            entryId: expIdx
+                        });
+                    });
+                }
+            });
+        }
+        
+        // Save project bullets
+        if (data.projects) {
+            data.projects.forEach((proj, projIdx) => {
+                if (proj.bullets) {
+                    proj.bullets.forEach((bulletText) => {
+                        const bulletId = this.fileManager.generateBulletId({
+                            text: bulletText,
+                            section: 'projects',
+                            entryId: projIdx
+                        });
+                        this.fileManager.saveBullet(bulletId, {
+                            text: bulletText,
+                            section: 'projects',
+                            entryId: projIdx
+                        });
+                    });
+                }
+            });
+        }
     }
 
     // Bind personal information fields
@@ -159,6 +319,11 @@ class Editor {
 
         // Update preview
         this.updatePreview();
+        
+        // Reinitialize drag-and-drop after loading
+        setTimeout(() => {
+            this.makeAllBulletsSortable();
+        }, 100);
     }
 
     // Set field value helper
@@ -329,6 +494,14 @@ class Editor {
 
         // Bind bullet point buttons
         this.bindBulletButtons(entry, id, 'exp');
+        
+        // Make bullets sortable
+        setTimeout(() => {
+            const bulletContainer = entry.querySelector('.bullet-points');
+            if (bulletContainer) {
+                this.makeSortable(bulletContainer);
+            }
+        }, 50);
     }
 
     // Add project entry
@@ -381,6 +554,14 @@ class Editor {
 
         // Bind bullet point buttons
         this.bindBulletButtons(entry, id, 'proj');
+        
+        // Make bullets sortable
+        setTimeout(() => {
+            const bulletContainer = entry.querySelector('.bullet-points');
+            if (bulletContainer) {
+                this.makeSortable(bulletContainer);
+            }
+        }, 50);
     }
 
     // Add achievement entry
@@ -478,9 +659,18 @@ class Editor {
                     textarea.addEventListener('input', () => {
                         this.updateData();
                         this.updatePreview();
+                        this.saveCurrentBulletsToLibrary();
                     });
                 }
             });
+            
+            // Reinitialize sortable after adding new bullet
+            setTimeout(() => {
+                const bulletContainer = entry.querySelector('.bullet-points');
+                if (bulletContainer) {
+                    this.makeSortable(bulletContainer);
+                }
+            }, 50);
         }
 
         // Bind existing remove buttons
@@ -497,6 +687,7 @@ class Editor {
             textarea.addEventListener('input', () => {
                 this.updateData();
                 this.updatePreview();
+                this.saveCurrentBulletsToLibrary();
             });
         });
     }

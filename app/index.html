@@ -36,6 +36,19 @@
             <div class="editor-preview-container">
                 <!-- Editor Panel -->
                 <div class="editor-panel" id="editor-panel">
+                    <!-- File Upload Area -->
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-content">
+                            <h3>Upload Resume</h3>
+                            <p>Drag and drop your resume file (DOCX or PDF) or click to browse</p>
+                            <input type="file" id="resume-upload" accept=".docx,.pdf" />
+                            <label for="resume-upload" class="upload-button">
+                                <span>Choose File</span>
+                            </label>
+                            <div id="upload-status" class="upload-status"></div>
+                        </div>
+                    </div>
+
                     <div class="form-container">
                         <!-- Personal Information -->
                         <section class="form-section" data-section="personal">
@@ -151,6 +164,9 @@
                     </div>
                 </div>
 
+                <!-- Resize Handle -->
+                <div class="resize-handle" id="resize-handle"></div>
+
                 <!-- Preview Panel -->
                 <div class="preview-panel" id="preview-panel">
                     <div class="preview-header">
@@ -178,7 +194,9 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="src/fileManager.js"></script>
+    <script src="src/parser.js"></script>
     <script src="src/template.js"></script>
     <script src="src/preview.js"></script>
     <script src="src/editor.js"></script>

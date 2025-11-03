@@ -5,7 +5,10 @@ class FileManager {
         this.variants = new Map();
         this.currentVariant = null;
         this.storageKey = 'resume-builder-variants';
+        this.bulletLibrary = new Map();
+        this.bulletLibraryKey = 'resume-builder-bullet-library';
         this.loadFromStorage();
+        this.loadBulletLibrary();
     }
 
     // Load variants from localStorage
@@ -164,6 +167,128 @@ class FileManager {
         this.currentVariant = variantName;
         this.saveToStorage();
         return true;
+    }
+
+    // Bullet Library Management
+    loadBulletLibrary() {
+        const stored = localStorage.getItem(this.bulletLibraryKey);
+        if (stored) {
+            try {
+                const data = JSON.parse(stored);
+                this.bulletLibrary = new Map(data);
+            } catch (e) {
+                console.error('Error loading bullet library:', e);
+                this.bulletLibrary = new Map();
+            }
+        }
+    }
+
+    saveBulletLibrary() {
+        const data = Array.from(this.bulletLibrary.entries());
+        localStorage.setItem(this.bulletLibraryKey, JSON.stringify(data));
+    }
+
+    generateBulletId(bullet) {
+        // Generate unique ID for bullet based on content and context
+        const content = bullet.text.substring(0, 50).toLowerCase().replace(/\s+/g, '-');
+        const context = `${bullet.section}-${bullet.entryId || ''}`;
+        return `${context}-${content}-${Date.now()}`;
+    }
+
+    saveBullet(bulletId, bulletData) {
+        if (!this.bulletLibrary.has(bulletId)) {
+            // New bullet
+            this.bulletLibrary.set(bulletId, {
+                text: bulletData.text,
+                variants: [bulletData.text],
+                history: [{
+                    text: bulletData.text,
+                    timestamp: Date.now()
+                }],
+                section: bulletData.section || '',
+                entryId: bulletData.entryId || '',
+                createdAt: Date.now()
+            });
+        } else {
+            // Existing bullet - add variant if new
+            const bullet = this.bulletLibrary.get(bulletId);
+            if (bulletData.text && !bullet.variants.includes(bulletData.text)) {
+                bullet.variants.push(bulletData.text);
+                bullet.history.push({
+                    text: bulletData.text,
+                    timestamp: Date.now()
+                });
+                bullet.currentText = bulletData.text;
+            }
+        }
+        this.saveBulletLibrary();
+    }
+
+    getBulletVariants(bulletId) {
+        const bullet = this.bulletLibrary.get(bulletId);
+        return bullet ? bullet.variants : [];
+    }
+
+    getBulletHistory(bulletId) {
+        const bullet = this.bulletLibrary.get(bulletId);
+        return bullet ? bullet.history : [];
+    }
+
+    getAllBullets() {
+        return Array.from(this.bulletLibrary.values());
+    }
+
+    getBulletsBySection(section) {
+        return Array.from(this.bulletLibrary.values())
+            .filter(bullet => bullet.section === section);
+    }
+
+    deleteBullet(bulletId) {
+        this.bulletLibrary.delete(bulletId);
+        this.saveBulletLibrary();
+    }
+
+    // Save all bullets from resume data to library
+    saveBulletsFromResume(resumeData) {
+        // Save experience bullets
+        if (resumeData.experience) {
+            resumeData.experience.forEach((exp, expIdx) => {
+                if (exp.bullets) {
+                    exp.bullets.forEach((bulletText, bulletIdx) => {
+                        const bulletId = this.generateBulletId({
+                            text: bulletText,
+                            section: 'experience',
+                            entryId: expIdx
+                        });
+                        this.saveBullet(bulletId, {
+                            text: bulletText,
+                            section: 'experience',
+                            entryId: expIdx
+                        });
+                    });
+                }
+            });
+        }
+
+        // Save project bullets
+        if (resumeData.projects) {
+            resumeData.projects.forEach((proj, projIdx) => {
+                if (proj.bullets) {
+                    proj.bullets.forEach((bulletText, bulletIdx) => {
+                        const bulletId = this.generateBulletId({
+                            text: bulletText,
+                            section: 'projects',
+                            entryId: projIdx
+                        });
+                        this.saveBullet(bulletId, {
+                            text: bulletText,
+                            section: 'projects',
+                            entryId: projIdx
+                        });
+                    });
+                }
+            });
+        }
     }
 }
 
